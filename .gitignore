@@ -169,3 +169,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# direnv config file
+.envrc
+
+# apple droppings
+.DS_Store

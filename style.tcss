@@ -1,0 +1,12 @@
+Screen {
+    align: center middle;
+}
+
+SunPhases {
+    width: 32;
+    height: 9;
+    background: $panel;
+    color: $text;
+    border: $secondary tall;
+    content-align: center middle;
+}
