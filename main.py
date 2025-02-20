@@ -74,6 +74,8 @@ def runapp():
     app.run()
 
 if __name__ == "__main__":
-    runapp()
+    #runapp()
     #cli()
     #try_image()
+    from app import main
+    main()

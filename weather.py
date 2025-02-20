@@ -3,10 +3,12 @@
 Experiments with dawn, sunset and weather
 """
 import datetime as dt
+import json
 
 from requests import get
 
 from astral import LocationInfo
+from astral.sun import sun
 
 
 # CONSTANTS
@@ -43,6 +45,14 @@ def get_my_location() -> LocationInfo:
     return location
 
 
+def get_sun_data(location: LocationInfo, day: dt.date) -> sun:
+    """get data about sun's position give a place and date"""
+    return sun(location.observer, day, tzinfo=location.timezone)
+
+
+# daily note:
+#
+
 class DailyRecord:
     """daily record of interesting weather conditions"""
     date: dt.date # represents a local calendar day
@@ -52,6 +62,7 @@ class DailyRecord:
         self.date = date
         self.location = location
         self.conditions = {}
+
 
     def add(self, time: dt.datetime, name: str, value):
         """add condition"""
@@ -65,17 +76,36 @@ class DailyRecord:
         existing[name] = value
 
 
+    def sun(self):
+        """Get data for:
+        dawn
+        sunrise
+        noon
+        sunset
+        dusk
+        """
+        return get_sun_data(self.location, self.date)
+
+
 def get_weather_json(location: LocationInfo) -> dict:
     """Given a location, get the weather for the next 7 days"""
     # https://api.open-meteo.com/v1/forecast
     # ?latitude=47.60&longitude=-122.34
     # based on https://open-meteo.com/en/docs
     #options = "&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m"
-    options = "&hourly=temperature_2m,relative_humidity_2m&temperature_unit=fahrenheit"
+    options = "&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&temperature_unit=fahrenheit"
     tz = f"&timezone={location.timezone}"
     url = f"https://api.open-meteo.com/v1/forecast?latitude={location.latitude}&longitude={location.longitude}"
 
     return get(url+options+tz, timeout=TIMEOUT).json()
+
+# Weather notes
+# Hourly:
+# - apparent_temperature
+# - weather_code
+# - cloud_cover: cloudy
+# - wind_speed_10m: windy
+# - precipitation (inches): rainy
 
 
 def parse_weather(location: LocationInfo, data:dict) -> dict[int,DailyRecord]:
@@ -105,6 +135,75 @@ def parse_weather(location: LocationInfo, data:dict) -> dict[int,DailyRecord]:
                 day_rec.add(hourstamp, key, value_str)
 
     return result
+
+# conditions: drizzle, fog, hail, haze, rain, sleet, smoke, snow (and none)
+# time: day, night
+
+# ICONS = {
+#     0: "clear-day", #-day/night.png #FIXME
+#     1: "clear-day", #Mainly clear #FIXME dup
+#     2: "partly-cloudy", #partly cloudy
+#     3: "overcast-day",  #overcast, day/night,
+#     45: "fog", # Fog, day, night
+#     48:	"fog", # depositing rime fog #FIXME dup
+
+#     51: "drizzle", # Drizzle: Light
+#     53: "overcast-drizzle", # Drizzle moderate #FIXME
+#     55:	"extreme-drizzle", # Drizzle: dense intensity
+
+#     56: "", # Light Freezing Drizzle
+#     57:	"", # Light and dense intensity
+
+#     61: "rain", # Rain: Slight
+#     63: "overcast-rain",  # moderate and
+#     65: "extreme-rain",	# heavy intensity
+
+#     66: "", #Freezing Rain: Light and
+#     67: "", #	heavy intensity
+
+#     71: "snow", #Snow fall: Slight
+#     73: "overcast-snow", #moderate
+#     75: "extreme-snow",	# heavy intensity
+#     77: "sleet",	#Snow grains
+
+#     80: "rain", # Rain showers: Slight,
+#     81: "overcast-rain", # moderate, and
+#     82: "extreme-rain",	# violent
+
+#     85: "overcast-snow", # Snow showers slight
+#     86: "extreme-snow",	# heavy
+
+#     95: "thunderstorms", # Thunderstorm: Slight or moderate, day/night
+#     96: "thunderstorms-overcast", # Thunderstorm with slight hail
+#     99: "extreme-hail", # Thunderstorm with heavy hail
+# }
+
+def load_weather_codes() -> dict:
+    """load the codes"""
+    # TODO cache!
+    with open("weather-codes.json") as f:
+        return json.load(f)
+
+def weather_icon(wmo_code: str, hour: int) -> str:
+    """get a png filename for a code and hour of day"""
+    # TODO eventually handle day/night
+    # for now, return the file name
+    # allow "3", "3wmo" and "3wmo code"
+    # codes are really 0-99
+    if wmo_code.endswith("wmo code"):
+        wmo_code = wmo_code[:-8]
+    if wmo_code.endswith("wmo"):
+        wmo_code = wmo_code[:-3]
+    #code = int(wmo_code)
+
+    # cheap day-or-night check, fix with real sun rise/set time from daily record
+    tod = "day"
+    if hour < 6 or hour > 18:
+        tod = "night"
+
+    # load codes
+    codes = load_weather_codes()
+    return codes[wmo_code][tod]['image']
 
 
 def get_weather(location: LocationInfo) -> list[DailyRecord]:

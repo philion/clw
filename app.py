@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 """Fancy Weather App"""
 
+import datetime as dt
+from io import BytesIO
+
+from PIL import Image
+import requests
+
 from textual.app import App, ComposeResult, RenderResult
 from textual.containers import Container
 from textual.reactive import reactive
-from textual.widgets import Static #, Footer, Header
+from textual.widgets import Static  #, Footer,Header
 from textual.widget import Widget
 
 from textual_image.widget import Image as AutoImage
@@ -12,9 +18,9 @@ from textual_image.widget import Image as AutoImage
 #from astral import LocationInfo
 from astral.sun import sun
 
-from weather import get_my_location, get_weather, DATE_FORMAT, EMOJI, TIME_FORMAT, DailyRecord
+from weather import get_my_location, get_weather, DATE_FORMAT, EMOJI, TIME_FORMAT, weather_icon, TIMEOUT
 
-TEST_IMAGE = "png/alert-avalanche-danger.png"
+#TEST_IMAGE = "png/alert-avalanche-danger.png"
 
 class SunPhases(Widget):
     """Display sun rise and set times"""
@@ -38,7 +44,7 @@ class Gallery(Container):
         grid-size: 12 1;
         Container {
             border: round gray;
-            align: center middle;
+            align: center top;
         }
         .width-auto {
             width: auto;
@@ -69,12 +75,43 @@ class Gallery(Container):
         weather_week = get_weather(location)
         weather = weather_week[0]
 
+        offset = dt.datetime.now().hour
+
         for i in range(12):
             with Container() as c:
-                c.border_title = f"{i}"
+                hour = offset + i
+
+                if hour >= 24:
+                    offset = -i # zero current index
+                    hour = 0
+                    weather = weather_week[1] # TODO index
+
+                c.border_title = f"{hour}:00"
                 yield Static(weather.location.name)
-                yield AutoImage(TEST_IMAGE, classes="width-auto height-auto")
-                yield Static(str(weather.conditions[i]))
+
+                image_url = weather_icon(weather.conditions[hour]['weather_code'], hour)
+                # NOTE: These need to be cached!
+                response = requests.get(image_url, timeout=TIMEOUT)
+                content = BytesIO(response.content)
+                image = Image.open(content)
+                yield AutoImage(image, classes="width-auto height-auto")
+
+                for item in weather.conditions[hour].values():
+                    yield Static(item)
+
+                # yield Static(weather.conditions[hour]['temperature_2m'])
+                # yield Static(weather.conditions[hour]['temperature_2m'])
+                # yield Static(weather.conditions[hour]['relative_humidity_2m'])
+
+# top level location, date
+# Lay out hourly column
+# - time of day
+# - condition icon
+# - condition text
+# - temperature block
+#
+# time: start with now().hour, find offsets for next 12 hours
+
 
 
 class WeatherApp(App[None]):
