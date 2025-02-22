@@ -51,7 +51,8 @@ def get_sun_data(location: LocationInfo, day: dt.date) -> sun:
 
 
 # daily note:
-#
+# contains data associated with a full day
+# current conditions will contain records
 
 class DailyRecord:
     """daily record of interesting weather conditions"""
@@ -136,74 +137,29 @@ def parse_weather(location: LocationInfo, data:dict) -> dict[int,DailyRecord]:
 
     return result
 
-# conditions: drizzle, fog, hail, haze, rain, sleet, smoke, snow (and none)
-# time: day, night
-
-# ICONS = {
-#     0: "clear-day", #-day/night.png #FIXME
-#     1: "clear-day", #Mainly clear #FIXME dup
-#     2: "partly-cloudy", #partly cloudy
-#     3: "overcast-day",  #overcast, day/night,
-#     45: "fog", # Fog, day, night
-#     48:	"fog", # depositing rime fog #FIXME dup
-
-#     51: "drizzle", # Drizzle: Light
-#     53: "overcast-drizzle", # Drizzle moderate #FIXME
-#     55:	"extreme-drizzle", # Drizzle: dense intensity
-
-#     56: "", # Light Freezing Drizzle
-#     57:	"", # Light and dense intensity
-
-#     61: "rain", # Rain: Slight
-#     63: "overcast-rain",  # moderate and
-#     65: "extreme-rain",	# heavy intensity
-
-#     66: "", #Freezing Rain: Light and
-#     67: "", #	heavy intensity
-
-#     71: "snow", #Snow fall: Slight
-#     73: "overcast-snow", #moderate
-#     75: "extreme-snow",	# heavy intensity
-#     77: "sleet",	#Snow grains
-
-#     80: "rain", # Rain showers: Slight,
-#     81: "overcast-rain", # moderate, and
-#     82: "extreme-rain",	# violent
-
-#     85: "overcast-snow", # Snow showers slight
-#     86: "extreme-snow",	# heavy
-
-#     95: "thunderstorms", # Thunderstorm: Slight or moderate, day/night
-#     96: "thunderstorms-overcast", # Thunderstorm with slight hail
-#     99: "extreme-hail", # Thunderstorm with heavy hail
-# }
 
 def load_weather_codes() -> dict:
     """load the codes"""
-    # TODO cache!
-    with open("weather-codes.json") as f:
+    with open("weather-codes.json", encoding="utf-8") as f:
         return json.load(f)
 
-def weather_icon(wmo_code: str, hour: int) -> str:
+
+_weather_codes = load_weather_codes()
+def lookup_code(wmo_code: str):
+    """return a day, night, image-url and description for given code"""
+    return _weather_codes[wmo_code]
+
+
+def weather_icon(wmo_code: str, tod: str) -> str:
     """get a png filename for a code and hour of day"""
-    # TODO eventually handle day/night
-    # for now, return the file name
     # allow "3", "3wmo" and "3wmo code"
-    # codes are really 0-99
     if wmo_code.endswith("wmo code"):
         wmo_code = wmo_code[:-8]
+
     if wmo_code.endswith("wmo"):
         wmo_code = wmo_code[:-3]
-    #code = int(wmo_code)
 
-    # cheap day-or-night check, fix with real sun rise/set time from daily record
-    tod = "day"
-    if hour < 6 or hour > 18:
-        tod = "night"
-
-    # load codes
-    codes = load_weather_codes()
-    return codes[wmo_code][tod]['image']
+    return lookup_code(wmo_code)[tod]['image']
 
 
 def get_weather(location: LocationInfo) -> list[DailyRecord]:

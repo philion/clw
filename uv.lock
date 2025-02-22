@@ -148,8 +148,7 @@ wheels = [
 
 [[package]]
 name = "clw"
-version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "aiohappyeyeballs" },
     { name = "aiohttp" },
@@ -163,6 +162,7 @@ dependencies = [
     { name = "idna" },
     { name = "imgcat" },
     { name = "multidict" },
+    { name = "pillow" },
     { name = "propcache" },
     { name = "python-weather" },
     { name = "requests" },
@@ -189,6 +189,7 @@ requires-dist = [
     { name = "idna", specifier = "==3.10" },
     { name = "imgcat", specifier = ">=0.6.0" },
     { name = "multidict", specifier = "==6.1.0" },
+    { name = "pillow", specifier = ">=10.4.0" },
     { name = "propcache", specifier = "==0.2.1" },
     { name = "python-weather", specifier = "==2.0.7" },
     { name = "requests", specifier = "==2.32.3" },
