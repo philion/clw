@@ -20,7 +20,7 @@ from textual_image.widget import Image as AutoImage
 from astral import LocationInfo
 from astral.sun import sun
 
-from weather import get_my_location, get_weather, DATE_FORMAT, EMOJI, TIME_FORMAT, weather_icon, TIMEOUT
+from clw.weather import get_my_location, get_weather, DATE_FORMAT, EMOJI, TIME_FORMAT, weather_icon, TIMEOUT
 
 log = logging.getLogger(__name__)
 
