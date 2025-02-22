@@ -2,18 +2,17 @@
 """Fancy Weather App"""
 
 import datetime as dt
-from io import BytesIO
+from io import BytesIO, StringIO
 import logging
 
 from PIL import Image
 import requests
 
 from textual.app import App, ComposeResult, RenderResult
-from textual.containers import Container, VerticalScroll
+from textual.containers import Container
 from textual.reactive import reactive
-from textual.widgets import Static  #, Footer,Header
+from textual.widgets import Static, Log  #, Footer,Header
 from textual.widget import Widget
-from textual.message import Message
 
 from textual_image.widget import Image as AutoImage
 
@@ -142,9 +141,8 @@ class Gallery(Container):
 # time: start with now().hour, find offsets for next 12 hours
 
 
-
 class WeatherApp(App[None]):
-    """App showcasing textual-image's image rendering capabilities."""
+    """Command Line Weather App"""
 
     CSS = """
     WeatherApp {
@@ -152,13 +150,12 @@ class WeatherApp(App[None]):
     """
 
     image_type: reactive[str | None] = reactive(None, recompose=True)
-    #weather: DailyRecord
     location: LocationInfo
 
     def compose(self) -> ComposeResult:
         """Yields child widgets."""
         yield Gallery().data_bind(WeatherApp.image_type)
-        yield LogBox()
+        yield Log(max_lines=10_000, highlight=True)
 
 
     def on_click(self) -> None:
@@ -166,36 +163,27 @@ class WeatherApp(App[None]):
         self.exit()
 
 
-    def on_key(self, _) -> None:
+    def on_key(self, key) -> None:
         """handle key press"""
-        self.exit()
+        log_widget = self.query_one(Log)
+        log_widget.write_line(f"key pressed: {key}")
 
 
-
-class LogBox(VerticalScroll):
-    def compose(self) -> ComposeResult:
-        yield Static("Application Logs", classes="log-title")
-
-    def add_log(self, message: str) -> None:
-        new_log = Static(message, classes="log-message")
-        self.mount(new_log)
-        self.scroll_end(animate=False)
-
-
-class LogMessage(Message):
-    def __init__(self, message: str) -> None:
-        self.message = message
-        super().__init__()
-
-
-class TextualHandler(logging.Handler):
+class TextualLogHandler(logging.Handler):
+    """Route logs to internal log panel"""
     def __init__(self, app: App) -> None:
         super().__init__()
         self.app = app
 
+
+    buffer = StringIO()
     def emit(self, record: logging.LogRecord) -> None:
-        log_entry = self.format(record)
-        self.app.post_message(LogMessage(log_entry))
+        try:
+            log_widget = self.app.query_one(Log)
+            log_entry = self.format(record)
+            log_widget.write_line(log_entry)
+        except:
+            print("!!! " + self.format(record))
 
 
 def main() -> None:
@@ -207,8 +195,8 @@ def main() -> None:
     app.location = location
 
     # setup logging
-    handler = TextualHandler(app)
-    logging.basicConfig(level=logging.DEBUG, handlers=[handler]) # read -v from args
+    handler = TextualLogHandler(app)
+    logging.basicConfig(level=logging.DEBUG, handlers=[handler]) # read level from args
 
     app.run()
 
