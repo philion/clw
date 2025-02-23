@@ -3,7 +3,12 @@
 Experiments with dawn, sunset and weather
 """
 import datetime as dt
-import json
+
+import openmeteo_requests
+
+import requests_cache
+import pandas as pd
+from retry_requests import retry
 
 from requests import get
 
@@ -138,34 +143,57 @@ def parse_weather(location: LocationInfo, data:dict) -> dict[int,DailyRecord]:
     return result
 
 
-def load_weather_codes() -> dict:
-    """load the codes"""
-    with open("weather-codes.json", encoding="utf-8") as f:
-        return json.load(f)
 
-
-_weather_codes = load_weather_codes()
-def lookup_code(wmo_code: str):
-    """return a day, night, image-url and description for given code"""
-    return _weather_codes[wmo_code]
-
-
-def weather_icon(wmo_code: str, tod: str) -> str:
-    """get a png filename for a code and hour of day"""
-    # allow "3", "3wmo" and "3wmo code"
-    if wmo_code.endswith("wmo code"):
-        wmo_code = wmo_code[:-8]
-
-    if wmo_code.endswith("wmo"):
-        wmo_code = wmo_code[:-3]
-
-    return lookup_code(wmo_code)[tod]['image']
 
 
 def get_weather(location: LocationInfo) -> list[DailyRecord]:
     """Given a location, get the weather for the next 7 days"""
     data = get_weather_json(location)
     return parse_weather(location, data)
+
+
+class WeatherSession:
+    URL = "https://api.open-meteo.com/v1/forecast"
+    def __init__(self):
+        # Setup the Open-Meteo API client with cache and retry on error
+        cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
+        retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
+        self.openmeteo = openmeteo_requests.Client(session = retry_session)
+
+    def get(self, location: LocationInfo, **params):
+        params.update({
+	        "latitude": location.latitude,
+	        "longitude": location.longitude,
+        })
+        responses = self.openmeteo.weather_api(self.URL, params=params)
+        response = responses[0]
+        print(f"Coordinates {response.Latitude()}°N {response.Longitude()}°E")
+        print(f"Elevation {response.Elevation()} m asl")
+        print(f"Timezone {response.Timezone()} {response.TimezoneAbbreviation()}")
+        print(f"Timezone difference to GMT+0 {response.UtcOffsetSeconds()} s")
+
+        # Process hourly data. The order of variables needs to be the same as requested.
+        hourly = response.Hourly() # should be hourly.Variables(i) in order of params['hourly']
+        hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
+        # data is:
+        # rows of ?? date
+        # cols of values
+        # broken out by Current Daily Hourly Minutely15 SixHourly,
+        # each with per-segment value.
+
+        hourly_data = {"date": pd.date_range(
+            start = pd.to_datetime(hourly.Time(), unit = "s", utc = True),
+            end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True),
+            freq = pd.Timedelta(seconds = hourly.Interval()),
+            inclusive = "left"
+        )}
+
+        hourly_data["temperature_2m"] = hourly_temperature_2m
+
+        hourly_dataframe = pd.DataFrame(data = hourly_data)
+        print(hourly_dataframe)
+        return hourly_dataframe
+
 
 
 def cli():
@@ -180,7 +208,9 @@ def cli():
     # print(buffer)
 
     # hourly weather
-    weather = get_weather(city)
+    #weather = get_weather(city)
+    session = WeatherSession()
+    weather = session.get(city, hourly="temperature_2m")
 
     for day in weather:
         print(day.date)

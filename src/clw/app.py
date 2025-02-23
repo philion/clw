@@ -2,11 +2,8 @@
 """Fancy Weather App"""
 
 import datetime as dt
-from io import BytesIO, StringIO
+from io import StringIO
 import logging
-
-from PIL import Image
-import requests
 
 from textual.app import App, ComposeResult, RenderResult
 from textual.containers import Container
@@ -19,41 +16,13 @@ from textual_image.widget import Image as AutoImage
 from astral import LocationInfo
 from astral.sun import sun
 
-from clw.weather import get_my_location, get_weather, DATE_FORMAT, EMOJI, TIME_FORMAT, weather_icon, TIMEOUT
+from clw.weather import get_my_location, get_weather, DATE_FORMAT, EMOJI, TIME_FORMAT
+
+from .iconset import IconSet, CachedIconSet, LocalIconSet
 
 log = logging.getLogger(__name__)
 
-#TEST_IMAGE = "png/alert-avalanche-danger.png"
 
-# cheap in-memory cache
-_item_cache = {}
-def _get(key:str):
-    return _item_cache.get(key, None)
-def _put(key:str, value):
-    existing = _item_cache.get(key, None)
-    _item_cache[key] = value
-    return existing
-
-
-def image_for_code(code: str, hour: int) -> Image:
-    """load an image for the """
-    # cheap day-or-night check, fix with real sun rise/set time from daily record
-    tod = "day"
-    if hour < 6 or hour > 18:
-        tod = "night"
-
-    image_url = weather_icon(code, tod)
-
-    image = _get(image_url)
-    log.debug(f"checking cache for {image_url}")
-    if not image:
-        log.debug(f"loading image: {image_url}")
-        response = requests.get(image_url, timeout=TIMEOUT)
-        content = BytesIO(response.content)
-        image = Image.open(content)
-        _put(image_url, image)
-
-    return image
 
 
 class SunPhases(Widget):
@@ -68,6 +37,7 @@ class SunPhases(Widget):
             buffer += f"{EMOJI[name]} {time.strftime(TIME_FORMAT)} {name}\n"
 
         return buffer
+
 
 class Gallery(Container):
     """Weather gallery, paints 12 hours for the current weather"""
@@ -99,6 +69,7 @@ class Gallery(Container):
     """
 
     image_type: reactive[str | None] = reactive(None, recompose=True)
+    icons: IconSet = CachedIconSet(LocalIconSet("png"))
 
     def compose(self) -> ComposeResult:
         """Yields child widgets."""
@@ -107,7 +78,8 @@ class Gallery(Container):
 
         location = get_my_location()
         weather_week = get_weather(location)
-        weather = weather_week[0]
+        day_idx = 0
+        weather = weather_week[day_idx]
 
         offset = dt.datetime.now().hour
 
@@ -118,14 +90,19 @@ class Gallery(Container):
                 if hour >= 24:
                     offset = -i # zero current index
                     hour = 0
-                    weather = weather_week[1] # TODO index
+                    day_idx += 1 # rollover to next day
+                    weather = weather_week[day_idx]
 
                 c.border_title = f"{hour}:00"
                 yield Static(weather.location.name)
 
                 code = weather.conditions[hour]['weather_code']
-                image = image_for_code(code, hour)
+                image = self.icons.get_image(code, hour)
+                #log.info(f"{hour} {code} -> {image} {self.icons.get_description(code, hour)}")
                 yield AutoImage(image, classes="width-auto height-auto")
+
+                desc = self.icons.get_description(code, hour)
+                yield Static(desc)
 
                 for item in weather.conditions[hour].values():
                     yield Static(item)
@@ -182,8 +159,25 @@ class TextualLogHandler(logging.Handler):
             log_widget = self.app.query_one(Log)
             log_entry = self.format(record)
             log_widget.write_line(log_entry)
-        except:
+        except Exception:
             print("!!! " + self.format(record))
+
+
+def setup_logging(app:App, log_level:int):
+    """setup loggin for the app"""
+    handler = TextualLogHandler(app)
+
+    logging.basicConfig(
+        level=log_level,
+        handlers=[handler],
+        format="{asctime} {levelname:<8s} {name:<16} {message}", style='{')
+
+    logging.getLogger().setLevel(log_level)
+    # these chatty loggers get set to ERROR regardless
+    logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
+    logging.getLogger("asyncio").setLevel(logging.ERROR)
+    logging.getLogger("PIL").setLevel(logging.ERROR)
+    logging.getLogger("textual_image").setLevel(logging.INFO)
 
 
 def main() -> None:
@@ -195,8 +189,7 @@ def main() -> None:
     app.location = location
 
     # setup logging
-    handler = TextualLogHandler(app)
-    logging.basicConfig(level=logging.DEBUG, handlers=[handler]) # read level from args
+    setup_logging(app, logging.DEBUG)
 
     app.run()
 
