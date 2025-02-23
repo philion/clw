@@ -16,13 +16,10 @@ from textual_image.widget import Image as AutoImage
 from astral import LocationInfo
 from astral.sun import sun
 
-from clw.weather import get_my_location, get_weather, DATE_FORMAT, EMOJI, TIME_FORMAT
-
+from .weather import get_my_location, DATE_FORMAT, EMOJI, TIME_FORMAT, WeatherSession
 from .iconset import IconSet, CachedIconSet, LocalIconSet
 
 log = logging.getLogger(__name__)
-
-
 
 
 class SunPhases(Widget):
@@ -33,8 +30,8 @@ class SunPhases(Widget):
         s = sun(city.observer, tzinfo=city.timezone)
 
         buffer = f"{city.name} {city.region}\n{s['dawn'].strftime(DATE_FORMAT)}\n"
-        for name, time in s.items():
-            buffer += f"{EMOJI[name]} {time.strftime(TIME_FORMAT)} {name}\n"
+        for name, timestamp in s.items():
+            buffer += f"{EMOJI[name]} {timestamp.strftime(TIME_FORMAT)} {name}\n"
 
         return buffer
 
@@ -70,14 +67,16 @@ class Gallery(Container):
 
     image_type: reactive[str | None] = reactive(None, recompose=True)
     icons: IconSet = CachedIconSet(LocalIconSet("png"))
+    location = get_my_location()
 
     def compose(self) -> ComposeResult:
         """Yields child widgets."""
         if not self.image_type:
             return
 
-        location = get_my_location()
-        weather_week = get_weather(location)
+        #location = get_my_location()
+        session = WeatherSession()
+        weather_week = session.get_daily(self.location)
         day_idx = 0
         weather = weather_week[day_idx]
 
@@ -145,6 +144,10 @@ class WeatherApp(App[None]):
         log_widget = self.query_one(Log)
         log_widget.write_line(f"key pressed: {key}")
 
+        if key.key == 'q':
+            log_widget.write_line("exiting in 3... 2... 1...")
+            self.exit()
+
 
 class TextualLogHandler(logging.Handler):
     """Route logs to internal log panel"""
@@ -155,12 +158,9 @@ class TextualLogHandler(logging.Handler):
 
     buffer = StringIO()
     def emit(self, record: logging.LogRecord) -> None:
-        try:
-            log_widget = self.app.query_one(Log)
-            log_entry = self.format(record)
-            log_widget.write_line(log_entry)
-        except Exception:
-            print("!!! " + self.format(record))
+        log_widget = self.app.query_one(Log)
+        log_entry = self.format(record)
+        log_widget.write_line(log_entry)
 
 
 def setup_logging(app:App, log_level:int):

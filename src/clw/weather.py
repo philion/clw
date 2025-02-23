@@ -72,7 +72,9 @@ class DailyRecord:
 
     def add(self, time: dt.datetime, name: str, value):
         """add condition"""
-        assert time.day == self.date.day and time.month == self.date.month and time.year == self.date.year
+        # assert time.day == self.date.day
+        #     and time.month == self.date.month
+        #     and time.year == self.date.year
 
         existing = self.conditions.get(time.hour, None)
         if not existing:
@@ -93,18 +95,6 @@ class DailyRecord:
         return get_sun_data(self.location, self.date)
 
 
-def get_weather_json(location: LocationInfo) -> dict:
-    """Given a location, get the weather for the next 7 days"""
-    # https://api.open-meteo.com/v1/forecast
-    # ?latitude=47.60&longitude=-122.34
-    # based on https://open-meteo.com/en/docs
-    #options = "&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m"
-    options = "&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code&temperature_unit=fahrenheit"
-    tz = f"&timezone={location.timezone}"
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={location.latitude}&longitude={location.longitude}"
-
-    return get(url+options+tz, timeout=TIMEOUT).json()
-
 # Weather notes
 # Hourly:
 # - apparent_temperature
@@ -122,7 +112,8 @@ def parse_weather(location: LocationInfo, data:dict) -> dict[int,DailyRecord]:
 
     # need to break out 7 DailyRecords, 0-indexed by offset from *first* date in
     #for key, units in response['hourly_units'].items():
-    start_date = dt.datetime.fromisoformat(data['hourly']['time'][0]).date() # use the first record for start
+    # use the first record for start
+    start_date = dt.datetime.fromisoformat(data['hourly']['time'][0]).date()
 
     for i, time_str in enumerate(data['hourly']['time']):
         hourstamp = dt.datetime.fromisoformat(time_str)
@@ -143,24 +134,17 @@ def parse_weather(location: LocationInfo, data:dict) -> dict[int,DailyRecord]:
     return result
 
 
-
-
-
-def get_weather(location: LocationInfo) -> list[DailyRecord]:
-    """Given a location, get the weather for the next 7 days"""
-    data = get_weather_json(location)
-    return parse_weather(location, data)
-
-
 class WeatherSession:
+    """encapsulate a session"""
     URL = "https://api.open-meteo.com/v1/forecast"
     def __init__(self):
         # Setup the Open-Meteo API client with cache and retry on error
         cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
-        retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
-        self.openmeteo = openmeteo_requests.Client(session = retry_session)
+        self.session = retry(cache_session, retries = 5, backoff_factor = 0.2)
+        self.openmeteo = openmeteo_requests.Client(session = self.session)
 
     def get(self, location: LocationInfo, **params):
+        """use the openmeteo client"""
         params.update({
 	        "latitude": location.latitude,
 	        "longitude": location.longitude,
@@ -194,6 +178,26 @@ class WeatherSession:
         print(hourly_dataframe)
         return hourly_dataframe
 
+
+    def get_json(self, location: LocationInfo, **params) -> dict:
+        """Given a location, get the weather for the next 7 days"""
+
+        params.update({
+	        "latitude": location.latitude,
+	        "longitude": location.longitude,
+            "timezone": location.timezone,
+            "temperature_unit": "fahrenheit",
+        })
+
+        return self.session.get(self.URL, params).json()
+
+
+    def get_daily(self, location: LocationInfo) -> list[DailyRecord]:
+        """Given a location, get the weather for the next 7 days"""
+        hourly = "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code"
+
+        data = self.get_json(location, hourly=hourly)
+        return parse_weather(location, data)
 
 
 def cli():
