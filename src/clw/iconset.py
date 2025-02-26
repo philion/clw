@@ -55,24 +55,14 @@ class IconSet(ABC):
         return self.lookup_code(wmo_code)[tod]
 
 
-    def _tod_for_hour(self, hour):
-        # cheap day-or-night check, fix with real sun rise/set time from daily record
-        tod = "day"
-        if hour < 6 or hour > 18:
-            tod = "night"
-        return tod
-
-
-    def get_image(self, wmo_code: str, hour: int) -> str:
+    def get_image(self, wmo_code: str, tod: str) -> Image:
         """load an image for the code"""
-        tod = self._tod_for_hour(hour)
         filename =  self._get(wmo_code, tod)['image']
         return self.load_image(filename)
 
 
-    def get_description(self, wmo_code: str, hour: int) -> str:
+    def get_description(self, wmo_code: str, tod: str) -> str:
         """get the description for the code"""
-        tod = self._tod_for_hour(hour)
         return self._get(wmo_code, tod)['description']
 
 

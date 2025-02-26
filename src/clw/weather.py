@@ -41,6 +41,10 @@ def get_my_location() -> LocationInfo:
     latitude = float(loc_strs[0])
     longitude = float(loc_strs[1])
 
+    #https://api.open-elevation.com/api/v1/lookup?locations=41.161758,-8.583933
+    #{"results":[{"latitude":41.161758,"longitude":-8.583933,"elevation":117.0}]}
+
+
     location = LocationInfo(
         response.get("city"),
         response.get("region"),
@@ -53,6 +57,42 @@ def get_my_location() -> LocationInfo:
 def get_sun_data(location: LocationInfo, day: dt.date) -> sun:
     """get data about sun's position give a place and date"""
     return sun(location.observer, day, tzinfo=location.timezone)
+
+
+class SunRecord:
+    """sun-related times"""
+    dawn: dt.datetime
+    sunrise: dt.datetime
+    noon: dt.datetime
+    sunset: dt.datetime
+    dusk: dt.datetime
+
+
+    """times of sunrise and sunset"""
+    def __init__(self, location: LocationInfo, day: dt.date):
+        for key, timestamp in sun(location.observer, day).items():
+            # inject the timezone
+            setattr(self, key, timestamp.astimezone(location.tzinfo))
+
+
+    def hours(self) -> dict[int,(str,dt.datetime)]:
+        """an hour-indexed map of sun time"""
+        values = {}
+        for name, timestamp in self.__dict__.items():
+            hour = timestamp.hour
+            if timestamp.hour in values:
+                hour += 1
+            values[hour] = (name,timestamp)
+        return values
+
+
+    def time_of_day(self, hour:int):
+        """Day or night?"""
+        if hour <= self.dawn.hour or hour >= self.dusk.hour:
+            return "night"
+        else:
+            return "day"
+
 
 
 # daily note:
@@ -84,15 +124,9 @@ class DailyRecord:
         existing[name] = value
 
 
-    def sun(self):
-        """Get data for:
-        dawn
-        sunrise
-        noon
-        sunset
-        dusk
-        """
-        return get_sun_data(self.location, self.date)
+    def sun(self) -> SunRecord:
+        """sun times"""
+        return SunRecord(self.location, self.date)
 
 
 # Weather notes
@@ -133,6 +167,7 @@ def parse_weather(location: LocationInfo, data:dict) -> dict[int,DailyRecord]:
 
     return result
 
+## SEE https://open-meteo.com/en/docs for weather API details
 
 class WeatherSession:
     """encapsulate a session"""

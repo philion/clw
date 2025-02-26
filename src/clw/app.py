@@ -5,35 +5,33 @@ import datetime as dt
 from io import StringIO
 import logging
 
-from textual.app import App, ComposeResult, RenderResult
+from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.reactive import reactive
 from textual.widgets import Static, Log  #, Footer,Header
-from textual.widget import Widget
 
 from textual_image.widget import Image as AutoImage
 
 from astral import LocationInfo
-from astral.sun import sun
 
-from .weather import get_my_location, DATE_FORMAT, EMOJI, TIME_FORMAT, WeatherSession
+from .weather import get_my_location, WeatherSession, TIME_FORMAT
 from .iconset import IconSet, CachedIconSet, LocalIconSet
 
 log = logging.getLogger(__name__)
 
 
-class SunPhases(Widget):
-    """Display sun rise and set times"""
+# class SunPhases(Widget):
+#     """Display sun rise and set times"""
 
-    def render(self) -> RenderResult:
-        city = get_my_location()
-        s = sun(city.observer, tzinfo=city.timezone)
+#     def render(self) -> RenderResult:
+#         city = get_my_location()
+#         s = sun(city.observer, tzinfo=city.timezone)
 
-        buffer = f"{city.name} {city.region}\n{s['dawn'].strftime(DATE_FORMAT)}\n"
-        for name, timestamp in s.items():
-            buffer += f"{EMOJI[name]} {timestamp.strftime(TIME_FORMAT)} {name}\n"
+#         buffer = f"{city.name} {city.region}\n{s['dawn'].strftime(DATE_FORMAT)}\n"
+#         for name, timestamp in s.items():
+#             buffer += f"{EMOJI[name]} {timestamp.strftime(TIME_FORMAT)} {name}\n"
 
-        return buffer
+#         return buffer
 
 
 class Gallery(Container):
@@ -74,11 +72,13 @@ class Gallery(Container):
         if not self.image_type:
             return
 
-        #location = get_my_location()
         session = WeatherSession()
         weather_week = session.get_daily(self.location)
         day_idx = 0
         weather = weather_week[day_idx]
+        sun = weather.sun().hours()
+        #for name, timestamp in sun.items():
+        #    log.info(f"==timestamp.hour== {timestamp.strftime(TIME_FORMAT)} {name}\n")
 
         offset = dt.datetime.now().hour
 
@@ -91,16 +91,30 @@ class Gallery(Container):
                     hour = 0
                     day_idx += 1 # rollover to next day
                     weather = weather_week[day_idx]
+                    sun = weather.sun().hours()
 
-                c.border_title = f"{hour}:00"
-                yield Static(weather.location.name)
+                title = f"{hour}:00"
+                display = weather.location.name
+                if hour in sun:
+                    # INTENTION
+                    # for a given matching hour (0-23),
+                    # check if something happens, what it is and what time it happens
+                    # so the lookup, based on hour, should return (name,timestamp) tuple
+                    # kinda working, but the timestamps are GMT, not TZ, so "hour" is off by TZ offset.
+                    name, timestamp = sun[hour]
+                    title = timestamp.strftime(TIME_FORMAT)
+                    display = name
+                    log.info(f"{name} - {title} - {timestamp}")
+                c.border_title = title
+                yield Static(display)
 
                 code = weather.conditions[hour]['weather_code']
-                image = self.icons.get_image(code, hour)
-                #log.info(f"{hour} {code} -> {image} {self.icons.get_description(code, hour)}")
+                tod = weather.sun().time_of_day(hour)
+                image = self.icons.get_image(code, tod)
+                log.info(f"{hour} {code} {tod} -> {image} {self.icons.get_description(code, tod)}")
                 yield AutoImage(image, classes="width-auto height-auto")
 
-                desc = self.icons.get_description(code, hour)
+                desc = self.icons.get_description(code, tod)
                 yield Static(desc)
 
                 for item in weather.conditions[hour].values():
@@ -116,6 +130,9 @@ class Gallery(Container):
 #
 # time: start with now().hour, find offsets for next 12 hours
 
+# Textual Apps
+# https://textual.textualize.io/widgets/label/#__tabbed_1_2
+# https://github.com/textualize/textual/
 
 class WeatherApp(App[None]):
     """Command Line Weather App"""
@@ -173,20 +190,19 @@ def setup_logging(app:App, log_level:int):
         format="{asctime} {levelname:<8s} {name:<16} {message}", style='{')
 
     logging.getLogger().setLevel(log_level)
-    # these chatty loggers get set to ERROR regardless
-    logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
-    logging.getLogger("asyncio").setLevel(logging.ERROR)
-    logging.getLogger("PIL").setLevel(logging.ERROR)
+    # these chatty loggers get set to ERROR regardless level-10?
+    logging.getLogger("urllib3.connectionpool").setLevel(logging.INFO)
+    logging.getLogger("asyncio").setLevel(logging.INFO)
+    logging.getLogger("PIL").setLevel(logging.INFO)
     logging.getLogger("textual_image").setLevel(logging.INFO)
+    logging.getLogger("requests_cache").setLevel(logging.INFO)
 
 
 def main() -> None:
     """run the weather app"""
-    location = get_my_location()
-
     app = WeatherApp()
     app.image_type = "auto"
-    app.location = location
+    app.location = get_my_location()
 
     # setup logging
     setup_logging(app, logging.DEBUG)
