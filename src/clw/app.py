@@ -14,7 +14,7 @@ from textual_image.widget import Image as AutoImage
 
 from astral import LocationInfo
 
-from .weather import get_my_location, WeatherSession, TIME_FORMAT
+from .weather import WeatherProvider, TIME_FORMAT
 from .iconset import IconSet, CachedIconSet, LocalIconSet
 
 log = logging.getLogger(__name__)
@@ -65,21 +65,17 @@ class Gallery(Container):
 
     image_type: reactive[str | None] = reactive(None, recompose=True)
     icons: IconSet = CachedIconSet(LocalIconSet("png"))
-    location = get_my_location()
 
     def compose(self) -> ComposeResult:
         """Yields child widgets."""
         if not self.image_type:
             return
 
-        session = WeatherSession()
-        weather_week = session.get_daily(self.location)
+        provider = WeatherProvider.for_my_location()
+        weather_week = provider.get_daily()
         day_idx = 0
         weather = weather_week[day_idx]
-        sun = weather.sun().hours()
-        #for name, timestamp in sun.items():
-        #    log.info(f"==timestamp.hour== {timestamp.strftime(TIME_FORMAT)} {name}\n")
-
+        sun = weather.sun.hours()
         offset = dt.datetime.now().hour
 
         for i in range(12):
@@ -91,7 +87,7 @@ class Gallery(Container):
                     hour = 0
                     day_idx += 1 # rollover to next day
                     weather = weather_week[day_idx]
-                    sun = weather.sun().hours()
+                    sun = weather.sun.hours()
 
                 title = f"{hour}:00"
                 display = weather.location.name
@@ -100,7 +96,6 @@ class Gallery(Container):
                     # for a given matching hour (0-23),
                     # check if something happens, what it is and what time it happens
                     # so the lookup, based on hour, should return (name,timestamp) tuple
-                    # kinda working, but the timestamps are GMT, not TZ, so "hour" is off by TZ offset.
                     name, timestamp = sun[hour]
                     title = timestamp.strftime(TIME_FORMAT)
                     display = name
@@ -109,7 +104,7 @@ class Gallery(Container):
                 yield Static(display)
 
                 code = weather.conditions[hour]['weather_code']
-                tod = weather.sun().time_of_day(hour)
+                tod = weather.sun.time_of_day(hour)
                 image = self.icons.get_image(code, tod)
                 log.info(f"{hour} {code} {tod} -> {image} {self.icons.get_description(code, tod)}")
                 yield AutoImage(image, classes="width-auto height-auto")
@@ -202,7 +197,6 @@ def main() -> None:
     """run the weather app"""
     app = WeatherApp()
     app.image_type = "auto"
-    app.location = get_my_location()
 
     # setup logging
     setup_logging(app, logging.DEBUG)
