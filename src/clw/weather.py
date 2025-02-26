@@ -67,6 +67,7 @@ class SunRecord:
     sunset: dt.datetime
     dusk: dt.datetime
 
+    # TODO: moon rise,zenith,set and phase.
 
     """times of sunrise and sunset"""
     def __init__(self, location: LocationInfo, day: dt.date):
