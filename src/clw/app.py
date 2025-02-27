@@ -49,7 +49,7 @@ class Gallery(Container):
 
     image_type: reactive[str | None] = reactive(None, recompose=True)
     # FIXME - load path from ?
-    icons: IconSet = CachedIconSet(LocalIconSet("src/clw/data/png"))
+    icons: IconSet = CachedIconSet(LocalIconSet("clw/data/png"))
 
     def compose(self) -> ComposeResult:
         """Yields child widgets."""
