@@ -1,6 +1,9 @@
-A quick experiement with weather and sunrise times.
+An experiement with weather and sunrise times.
 
-**WIP**: This is currently under development, in main branch. Don't expect too much.
+## tl;dr
+```
+uvx --from acme-weather clw
+```
 
 ## Run
 
@@ -21,7 +24,7 @@ Standard [uv build and publish](https://docs.astral.sh/uv/guides/projects/) tool
 
 ```
 cd clw
-rm -fr dist
+rm -fr dist/*
 uv build
 # insert testing here
 uv publish
