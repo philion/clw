@@ -22,15 +22,18 @@
 ruff:
 	uvx ruff check
 
+fix:
+	uvx ruff check --fix
+
 lint: ruff
 
 build:
 	uv build
 
-deploy: build
-	uv deploy
+publish: build
+	uv publish
 
-dist: clean deploy
+dist: clean publish
 
 clean:
 	rm -rf __pycache__

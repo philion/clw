@@ -2,12 +2,7 @@
 """
 Experiments with dawn, sunset and weather
 """
-from pathlib import Path
-import shutil
-from importlib.resources import read_text
-import json
 
-import clw
 from clw.iconset import LocalIconSet
 
 
