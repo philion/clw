@@ -2,36 +2,20 @@
 """Fancy Weather App"""
 
 import datetime as dt
-from io import StringIO
 import logging
 
 from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.reactive import reactive
-from textual.widgets import Static, Log  #, Footer,Header
+from textual.widgets import Static
 
 from textual_image.widget import Image as AutoImage
 
-from astral import LocationInfo
-
 from .weather import WeatherProvider, TIME_FORMAT
 from .iconset import IconSet, CachedIconSet, LocalIconSet
+from .widgets import LogHandlerWidget
 
 log = logging.getLogger(__name__)
-
-
-# class SunPhases(Widget):
-#     """Display sun rise and set times"""
-
-#     def render(self) -> RenderResult:
-#         city = get_my_location()
-#         s = sun(city.observer, tzinfo=city.timezone)
-
-#         buffer = f"{city.name} {city.region}\n{s['dawn'].strftime(DATE_FORMAT)}\n"
-#         for name, timestamp in s.items():
-#             buffer += f"{EMOJI[name]} {timestamp.strftime(TIME_FORMAT)} {name}\n"
-
-#         return buffer
 
 
 class Gallery(Container):
@@ -138,12 +122,18 @@ class WeatherApp(App[None]):
     """
 
     image_type: reactive[str | None] = reactive(None, recompose=True)
-    location: LocationInfo
+    #location: LocationInfo
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.image_type = "auto"
+
 
     def compose(self) -> ComposeResult:
         """Yields child widgets."""
         yield Gallery().data_bind(WeatherApp.image_type)
-        yield Log(max_lines=10_000, highlight=True)
+        # FIXME get debug flag from CLI somehow. set on app?
+        yield LogHandlerWidget(self, logging.DEBUG, max_lines=1000, highlight=True)
 
 
     def on_click(self) -> None:
@@ -153,7 +143,8 @@ class WeatherApp(App[None]):
 
     def on_key(self, key) -> None:
         """handle key press"""
-        log_widget = self.query_one(Log)
+        # just to show how writing directly is different than logging
+        log_widget = self.query_one(LogHandlerWidget)
         log_widget.write_line(f"key pressed: {key}")
 
         if key.key == 'q':
@@ -161,47 +152,9 @@ class WeatherApp(App[None]):
             self.exit()
 
 
-class TextualLogHandler(logging.Handler):
-    """Route logs to internal log panel"""
-    def __init__(self, app: App) -> None:
-        super().__init__()
-        self.app = app
-
-
-    buffer = StringIO()
-    def emit(self, record: logging.LogRecord) -> None:
-        log_widget = self.app.query_one(Log)
-        log_entry = self.format(record)
-        log_widget.write_line(log_entry)
-
-
-def setup_logging(app:App, log_level:int):
-    """setup loggin for the app"""
-    handler = TextualLogHandler(app)
-
-    logging.basicConfig(
-        level=log_level,
-        handlers=[handler],
-        format="{asctime} {levelname:<8s} {name:<16} {message}", style='{')
-
-    logging.getLogger().setLevel(log_level)
-    # these chatty loggers get set to ERROR regardless level-10?
-    logging.getLogger("urllib3.connectionpool").setLevel(logging.INFO)
-    logging.getLogger("asyncio").setLevel(logging.INFO)
-    logging.getLogger("PIL").setLevel(logging.INFO)
-    logging.getLogger("textual_image").setLevel(logging.INFO)
-    logging.getLogger("requests_cache").setLevel(logging.INFO)
-
-
 def main() -> None:
     """run the weather app"""
-    app = WeatherApp()
-    app.image_type = "auto"
-
-    # setup logging
-    setup_logging(app, logging.DEBUG)
-
-    app.run()
+    WeatherApp().run()
 
 
 if __name__ == "__main__":
