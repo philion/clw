@@ -34,11 +34,7 @@ clw = ["src/clw", "*/clw/src/clw"]
 tests = ["tests", "*/clw/tests"]
 
 [tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
 
 [tool.hatch]
 
@@ -54,3 +50,4 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 clw = "clw.app:main"
+acme-weather = "clw.app:main"

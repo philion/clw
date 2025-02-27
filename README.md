@@ -2,7 +2,7 @@ An experiement with weather and sunrise times.
 
 ## tl;dr
 ```
-uvx --from acme-weather clw
+uvx acme-weather
 ```
 
 ## Run
