@@ -48,8 +48,7 @@ class Gallery(Container):
     """
 
     image_type: reactive[str | None] = reactive(None, recompose=True)
-    # FIXME - load path from ?
-    icons: IconSet = CachedIconSet(LocalIconSet("clw/data/png"))
+    icons: IconSet = CachedIconSet(LocalIconSet("data/png"))
 
     def compose(self) -> ComposeResult:
         """Yields child widgets."""
@@ -155,6 +154,7 @@ class WeatherApp(App[None]):
 
 def main() -> None:
     """run the weather app"""
+    logging.basicConfig(level=logging.DEBUG)
     WeatherApp().run()
 
 

@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from abc import ABC, abstractmethod
 import json
+from importlib.resources import read_text, read_binary
 
 from PIL import Image
 import requests
@@ -28,6 +29,7 @@ class IconSet(ABC):
         super().__init__()
         self._codes = self.load_weather_codes()
 
+
     @abstractmethod
     def load_image(self, filename:str):
         """load an image"""
@@ -40,7 +42,7 @@ class IconSet(ABC):
 
     def lookup_code(self, wmo_code: str):
         """return a day, night, image-url and description for given code"""
-        return self._codes[wmo_code]
+        return self._codes.get(wmo_code)
 
 
     def _get(self, wmo_code: str, tod: str) -> dict:
@@ -87,20 +89,26 @@ class CachedIconSet(IconSet):
 
 class LocalIconSet(IconSet):
     """load icons from the local file system"""
+
     def __init__(self, name:str):
-        self.directory = name
+        self.name = name
         super().__init__()
 
 
     def load_weather_codes(self) -> dict:
         """load the weather codes"""
-        with open(Path(self.directory, "weather-codes.json"), encoding="utf-8") as f:
-            return json.load(f)
+        #path = Path(self.name, "weather-codes.json")
+        #name = "data/png"
+        path = Path(self.name, "weather-codes.json")
+        result = json.loads(read_text(__package__, path))
+        return result
+
+        #log.error(f">>>> {clw} {path}")
 
 
     def load_image(self, filename:str) -> Image:
         """load the give image"""
-        name = Path(self.directory, filename)
+        name = Path(self.name, filename)
         log.debug("loading image: %s", name)
         return Image.open(name)
 
