@@ -3,7 +3,8 @@ import logging
 from pathlib import Path
 from abc import ABC, abstractmethod
 import json
-from importlib.resources import read_text
+from importlib.resources import read_text, read_binary
+from io import BytesIO
 
 from PIL import Image
 import requests
@@ -383,8 +384,6 @@ class LocalIconSet(IconSet):
 
     def load_weather_codes(self) -> dict:
         """load the weather codes"""
-        #path = Path(self.name, "weather-codes.json")
-        #name = "data/png"
         path = Path(self.name, "weather-codes.json")
         return json.loads(read_text(__package__, path))
         #return json.loads(HACK_CODE_JSON)
@@ -393,9 +392,9 @@ class LocalIconSet(IconSet):
     def load_image(self, filename:str) -> Image:
         """load the give image"""
         path = Path(self.name, filename)
-        #data = read_binary(__package__, path)
+        data = read_binary(__package__, path)
         log.debug("loading image: %s", path)
-        return Image.open(path)
+        return Image.open(BytesIO(data))
 
 
 class HttpIconSet(IconSet):

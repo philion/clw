@@ -16,15 +16,13 @@ ruff:
 fix:
 	uvx ruff check --fix
 
-lint: ruff
-
 build:
 	uv build
 
-publish: build
+dist:
+	rm -fr dist/
+	uv build
 	uv publish
-
-dist: clean publish
 
 clean:
 	rm -rf __pycache__
