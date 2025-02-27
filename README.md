@@ -19,13 +19,25 @@ uv run clw
 
 Standard [uv build and publish](https://docs.astral.sh/uv/guides/projects/) tools are used.
 
+```
+cd clw
+rm -fr dist
+uv build
+# insert testing here
+uv publish
+```
+
+To make `uv publish` smooth, I set the env var `UV_PUBLISH_TOKEN` with a valid PyPI token:
+```
+export UV_PUBLISH_TOKEN=pypi-yourReallyLongPyPIPublishingToken
+```
 
 ### To Do
 
 Current near-term implementation plans:
 - [x] day-or-night based on sun rise/set times
 - [ ] clean up visuals, provide external CSS
-- [ ] published to PyPI
+- [x] published to PyPI - https://pypi.org/project/acme-weather/
 - [ ] commandline app packaging with uv support
 - [ ] visual high and low temps: hottest, hot, warm, average, cool, cold, coldest
 - [ ] visual percipitation ???
