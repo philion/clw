@@ -1,5 +1,5 @@
 [project]
-name = "clw"
+name = "acme-weather"
 dynamic = ["version"]
 description = "Add your description here"
 readme = "README.md"
