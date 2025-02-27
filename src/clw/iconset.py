@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from abc import ABC, abstractmethod
 import json
-#from importlib.resources import read_text FIXME
+from importlib.resources import read_text
 
 from PIL import Image
 import requests
@@ -385,9 +385,9 @@ class LocalIconSet(IconSet):
         """load the weather codes"""
         #path = Path(self.name, "weather-codes.json")
         #name = "data/png"
-        #path = Path(self.name, "weather-codes.json")
-        #result = json.loads(read_text(__package__, path))
-        return json.loads(HACK_CODE_JSON)
+        path = Path(self.name, "weather-codes.json")
+        return json.loads(read_text(__package__, path))
+        #return json.loads(HACK_CODE_JSON)
 
 
     def load_image(self, filename:str) -> Image:
