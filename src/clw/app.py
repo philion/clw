@@ -154,7 +154,7 @@ class WeatherApp(App[None]):
 
 def main() -> None:
     """run the weather app"""
-    logging.basicConfig(level=logging.DEBUG)
+    #logging.basicConfig(level=logging.DEBUG)
     WeatherApp().run()
 
 
