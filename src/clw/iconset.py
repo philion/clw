@@ -106,6 +106,7 @@ class LocalIconSet(IconSet):
 
 
 class HttpIconSet(IconSet):
+    # FIXME add init with session, use for requests
     """load icons from the web"""
     def load_weather_codes(self) -> dict:
         """load the codes"""

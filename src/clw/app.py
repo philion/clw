@@ -48,7 +48,8 @@ class Gallery(Container):
     """
 
     image_type: reactive[str | None] = reactive(None, recompose=True)
-    icons: IconSet = CachedIconSet(LocalIconSet("png"))
+    # FIXME - load path from ?
+    icons: IconSet = CachedIconSet(LocalIconSet("src/clw/data/png"))
 
     def compose(self) -> ComposeResult:
         """Yields child widgets."""
