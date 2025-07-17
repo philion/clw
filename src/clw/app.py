@@ -13,7 +13,7 @@ from textual_image.widget import Image as AutoImage
 
 from .weather import WeatherProvider, TIME_FORMAT
 from .iconset import IconSet, CachedIconSet, LocalIconSet
-from .widgets import LogHandlerWidget
+#from .widgets import LogHandlerWidget
 
 log = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ class WeatherApp(App[None]):
         """Yields child widgets."""
         yield Gallery().data_bind(WeatherApp.image_type)
         # FIXME get debug flag from CLI somehow. set on app?
-        yield LogHandlerWidget(self, logging.DEBUG, max_lines=1000, highlight=True)
+        #yield LogHandlerWidget(self, logging.DEBUG, max_lines=1000, highlight=True)
 
 
     def on_click(self) -> None:
@@ -144,11 +144,11 @@ class WeatherApp(App[None]):
     def on_key(self, key) -> None:
         """handle key press"""
         # just to show how writing directly is different than logging
-        log_widget = self.query_one(LogHandlerWidget)
-        log_widget.write_line(f"key pressed: {key}")
+        #log_widget = self.query_one(LogHandlerWidget)
+        #log_widget.write_line(f"key pressed: {key}")
 
         if key.key == 'q':
-            log_widget.write_line("exiting in 3... 2... 1...")
+            #log_widget.write_line("exiting in 3... 2... 1...")
             self.exit()
 
 

@@ -38,7 +38,7 @@ class WeatherSession:
     URL = "https://api.open-meteo.com/v1/forecast"
     def __init__(self):
         # Setup the Open-Meteo API client with cache and retry on error
-        cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
+        cache_session = requests_cache.CachedSession(backend="memory", expire_after=3600)
         self.session = retry(cache_session, retries = 5, backoff_factor = 0.2)
         self.openmeteo = openmeteo_requests.Client(session = self.session)
 
